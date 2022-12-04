@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>any | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found">
+<meta property="og:type" content="article">
+<meta property="og:title" content="any">
+<meta property="og:url" content="http://example.com/2022/12/04/any/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-12-04T18:08:01.000Z">
+<meta property="article:modified_time" content="2022-12-04T10:14:27.187Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-any" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2022/12/04/any/" class="article-date">
+  <time class="dt-published" datetime="2022-12-04T18:08:01.000Z" itemprop="datePublished">2022-12-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      any
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="What-Is-std-any"><a href="#What-Is-std-any" class="headerlink" title="What Is std::any"></a>What Is <code>std::any</code></h1><p><code>std::any</code> is a new feature that comes with C++ 17 standard. It’s kind of <code>void*</code> with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found here: <a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/utility/any">std::any - cppreference</a></p>
+<p>Understanding how <code>std::any</code> is implemented can be gainful, for it taking advantage of many c++ skills, especially templates.</p>
+<h1 id="Implementation-of-std-any"><a href="#Implementation-of-std-any" class="headerlink" title="Implementation of std::any"></a>Implementation of <code>std::any</code></h1><p>The source code referred to below is <any> of llvm’s libcxx library, revision: <a target="_blank" rel="noopener" href="https://github.com/llvm/llvm-project/blob/eb7d16ea25649909373e324e6ebf36774cabdbfa/libcxx/include/any">any - libcxx</a>.</p>
+<h2 id="Class-Layout"><a href="#Class-Layout" class="headerlink" title="Class Layout"></a>Class Layout</h2><p><code>std::any</code> has two data members:</p>
+<ol>
+<li><p><code>__h_: _HandleFunPtr</code>, it’s a function pointer that points to a static function, as well as the entry of data manipulation including constructing&#x2F;destroying&#x2F;copying&#x2F;access, etc. Prototype of the function is:</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*******</span></span><br><span class="line"><span class="comment">* arg1: Enum, kind of the manipulation, (_Destroy, _Copy, _Move, _Get, _TypeInfo)</span></span><br><span class="line"><span class="comment">* arg2: Caller&#x27;s &quot;this&quot; pointer</span></span><br><span class="line"><span class="comment">* arg3: Destination any, used in copy, move</span></span><br><span class="line"><span class="comment">* arg4: Runtime type info, always nullptr if rtti is disabled</span></span><br><span class="line"><span class="comment">* arg5: Fallback type info, described in next chapter</span></span><br><span class="line"><span class="comment">*******/</span></span><br><span class="line"><span class="keyword">using</span> _HandleFuncPtr =  <span class="type">void</span>* (*)(_Action, any <span class="type">const</span> *, any *, <span class="type">const</span> type_info *,</span><br><span class="line">                                        <span class="type">const</span> <span class="type">void</span>* __fallback_info);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>__s_: _Storage</code>, stores pointer to managing data. It’s declared as a union for separately handling large and small objects.</p>
+</li>
+</ol>
+<p>In conclusion, <code>std::any</code> is basically equal to an aggregate of a data block and a predefined manipulation function, which proves the famous saying <strong>Algorithms + Data Structures &#x3D; Programs</strong> to some extent.</p>
+<h2 id="Skills-of-Implementation"><a href="#Skills-of-Implementation" class="headerlink" title="Skills of Implementation"></a>Skills of Implementation</h2><h3 id="Small-objects-optimization"><a href="#Small-objects-optimization" class="headerlink" title="Small objects optimization"></a>Small objects optimization</h3><blockquote>
+<p>Implementations are encouraged to avoid dynamic allocations for small objects.    – cpp refrence</p>
+</blockquote>
+<p>The data pointer <code>__s_</code> is not a <code>void*</code> but privately declared as a such union:</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">using</span> _Buffer = <span class="type">aligned_storage_t</span>&lt;<span class="number">3</span>*<span class="built_in">sizeof</span>(<span class="type">void</span>*), alignment_of&lt;<span class="type">void</span>*&gt;::value&gt;;</span><br><span class="line"><span class="keyword">union</span> <span class="title class_">_Storage</span> &#123;</span><br><span class="line">    <span class="keyword">constexpr</span> _Storage() : __ptr(<span class="literal">nullptr</span>) &#123;&#125;</span><br><span class="line">    <span class="type">void</span> *  __ptr;</span><br><span class="line">    __any_imp::_Buffer __buf;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>In a 64-bit machine, <code>_Storage</code> occupies 24 bytes. <code>__buf</code> is equally a <code>void*</code>, used when the contained object is no larger than 24 bytes. Utilizing the benefits of stack memory, constructing or copying these small objects could be more effective. Larger objects, on the other hand, have to be stored on heap memory and allocated dynamically in runtime.</p>
+<p>“24 bytes” is a curated threshold that is exactly the size of <code>std::vector</code> &#x2F;<code>std::string</code> and many other STL containers in libcxx. This fact means <code>std::any</code> can manage these common objects faster, though the memory inside them could still be dynamic.</p>
+<p>A similar memory optimization technology is also applied on <code>std::string</code>, but subtler. I will introduce it in the future.</p>
+<h3 id="In-place-Construct"><a href="#In-place-Construct" class="headerlink" title="In-place Construct"></a>In-place Construct</h3><p>When a <code>std::any</code> object is copied, the object managed by it is also copied. It’s pretty straight yet important, simply <code>memcpy</code> is not enough because some classes have essential things to do, such as <code>std::shared_ptr</code>. <code>std::any</code>s copy object with its own copy constructor through allocator. It also applies to move construction.</p>
+<p>But what about the constructor itself? Like <code>emplace_back</code> for <code>std::vector</code>, <code>std::any</code> also has an emplace-like constructor, in which the object is directly constructed on <code>__buf</code> instead of constructing a temporary object and then moving it.</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::any <span class="title">a</span><span class="params">(std::in_place_type&lt;std::string&gt;, <span class="string">&quot;hello&quot;</span>)</span></span>;</span><br><span class="line"><span class="function">std::any <span class="title">b</span><span class="params">(<span class="string">&quot;hello&quot;</span>)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>By inspecting these 2 variables in a debugger, we can acknowledge that <code>std::in_place_type&lt;std::string&gt;</code> has two folder meanings, it tells <code>std::any</code> constructing a <code>std::string</code> instead of a <code>const char*</code> and constructing it directly.</p>
+<h3 id="Type-to-int-mapping"><a href="#Type-to-int-mapping" class="headerlink" title="Type to int mapping"></a>Type to int mapping</h3><p>Obviously, <code>std::any</code> is not a template class itself, but it can throw exceptions when casting it to a different static type even if RTTI(run-time type info) is disabled. The secret of this type-safety is a mapping from type to an integer.</p>
+<p>On line 162 of <code>any.h</code>, a type-unique template struct is defined as:</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">_Tp</span>&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">__unique_typeinfo</span> &#123; </span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">int</span> __id = <span class="number">0</span>; </span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// get type id if rtti is disabled</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">_Tp</span>&gt;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="type">const</span> <span class="type">void</span>* __get_fallback_typeid() &#123;</span><br><span class="line">    <span class="keyword">return</span> &amp;__unique_typeinfo&lt;<span class="type">remove_cv_t</span>&lt;<span class="type">remove_reference_t</span>&lt;_Tp&gt;&gt;&gt;::__id;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>The static member <code>__id</code> of <code>__unique_typeinfo</code> is always equal to 0 but is a unique instance corresponding to type <code>__Tp</code> due to template specialization. Based on this, <code>std::any</code> gets the address of <code>__id</code> as a fallback type id if RTTI is disabled (compiling with flag <code>-fno-rtti</code>).</p>
+<h1 id="Best-Practices"><a href="#Best-Practices" class="headerlink" title="Best Practices"></a>Best Practices</h1><p>In conclusion, the best practices of <code>std::any</code> include:</p>
+<ul>
+<li>To avoid unnecessary copying, use <code>std::make_any</code> or <code>std::in_place_type</code> to construct.</li>
+<li>Pass <code>std::any</code> by reference if possible.</li>
+<li>Use pointer version <code>std::any_cast&lt;T&gt;(&amp;a)</code> to avoid copying large objects.</li>
+<li>Let custom objects conform to <a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/language/rule_of_three">the rule of three&#x2F;five&#x2F;zero</a> if managed by <code>std::any</code>.</li>
+</ul>
+<h1 id="Formatting-of-std-any-in-LLDB"><a href="#Formatting-of-std-any-in-LLDB" class="headerlink" title="Formatting of std::any in LLDB"></a>Formatting of <code>std::any</code> in LLDB</h1><p>Both belonging to Project LLVM, LLDB does not provide a formatted display of <code>std::any</code> of libcxx (while GDB does with libstdc++). Printing <code>std::any</code> in LLDB CLI will get:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">(lldb) n</span><br><span class="line">Process 76235 stopped</span><br><span class="line">* thread #1, queue = &#x27;com.apple.main-thread&#x27;, stop reason = step over</span><br><span class="line">    frame #0: 0x0000000100003a3c Play`main at main.cpp:17:5</span><br><span class="line">   14          int main() &#123;</span><br><span class="line">   15              std::any a = 1;</span><br><span class="line"><span class="meta prompt_">-&gt; </span><span class="language-bash">16              <span class="built_in">return</span> 0;</span></span><br><span class="line">   17          &#125;</span><br><span class="line">(lldb) fr v a</span><br><span class="line">(std::any) $0 = &#123;</span><br><span class="line">  __h = 0x0000000100003d2c (Play`std::__1::__any_imp::_SmallHandler&lt;int&gt;::__handle(std::__1::__any_imp::_Action, std::__1::any const*, std::__1::any*, std::type_info const*, void const*) at any:350)</span><br><span class="line">  __s = &#123;</span><br><span class="line">    __ptr = 0x0000000000000001</span><br><span class="line">    __buf = (__lx = &quot;\U00000001\0\0\0\0\0\0\0\U00000001\0\xc1\x89FͽV\0:\0\0\U00000001&quot;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>It takes seconds to understand “a” is an int (from _SmallHandler’s type) and its value is 0x1 (from first 4 bytes of <code>__buf</code>). I write a Python script as a plugin based on LLDB API to print it more intuitively. </p>
+<script src="https://gist.github.com/TsaiHao/a0abaaa7272c917d5fc00e2bdc676969.js"></script>
+
+<h2 id="Implementation-of-plugin"><a href="#Implementation-of-plugin" class="headerlink" title="Implementation of plugin"></a>Implementation of plugin</h2><p>There are 2 functions inside this script. <code>__lldb_init_module</code> is the entry of this plugin. <code>handle_std_any</code> is the processing handle used by LLDB.</p>
+<p>A tricky skill is catching the type name inside <code>_SmallHandler</code> using regex. After knowing that, we can find the object representing this type in python and then forcibly convert the pointer of buffer to it. This script should work for integers, floats, and <code>std::string</code>, but not very robust now. I will continually polish it.</p>
+<blockquote>
+<p>The same type-catching trick can also be employed in c++ source code. <code>__PRETTY_FUNCTION__</code> macro carries type name of a template function, so you can do some static reflections with it. A famous example is <a target="_blank" rel="noopener" href="https://github.com/Neargye/magic_enum">Magic Enum</a>.</p>
+</blockquote>
+<p>Another noticeable thing is that public classes of libcxx need special treatment because they have an inline namespace <code>__1</code>.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2022/12/04/any/" data-id="clb97inll0000e4nccgf60dk6" data-title="any" class="article-share-link">Share</a>
+      
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2022/12/04/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Hello World</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/12/">December 2022</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2022/12/04/any/">any</a>
+          </li>
+        
+          <li>
+            <a href="/2022/12/04/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2022 John Doe<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
