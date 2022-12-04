@@ -1,101 +1,34 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  
-  
-  <title>any | TsaiHao&#39;s Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found">
-<meta property="og:type" content="article">
-<meta property="og:title" content="any">
-<meta property="og:url" content="https://tsaihao.github.io/blog/implementation_of_libcxx_any/index.html">
-<meta property="og:site_name" content="TsaiHao&#39;s Blog">
-<meta property="og:description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found">
-<meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2022-12-04T18:08:01.000Z">
-<meta property="article:modified_time" content="2022-12-04T14:10:06.935Z">
-<meta property="article:author" content="Tsai Hao">
-<meta name="twitter:card" content="summary">
-  
-    <link rel="alternate" href="/atom.xml" title="TsaiHao's Blog" type="application/atom+xml">
-  
-  
-    <link rel="shortcut icon" href="/favicon.png">
-  
-  
-    
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>any - TsaiHao&#039;s Blog</title><link rel="manifest" href="/manifest.json"><meta name="application-name" content="TsaiHao&#039;s Blog"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TsaiHao&#039;s Blog"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&amp;#x2F;move&amp;#x2F;store&amp;#x2F;get, etc. Some basic usages of it can be found"><meta property="og:type" content="article"><meta property="og:title" content="any"><meta property="og:url" content="https://tsaihao.github.io/blog/implementation_of_libcxx_any/"><meta property="og:site_name" content="TsaiHao&#039;s Blog"><meta property="og:description" content="What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&amp;#x2F;move&amp;#x2F;store&amp;#x2F;get, etc. Some basic usages of it can be found"><meta property="og:locale" content="en_US"><meta property="og:image" content="https://tsaihao.github.io/img/og_image.png"><meta property="article:published_time" content="2022-12-04T18:08:01.000Z"><meta property="article:modified_time" content="2022-12-04T14:17:43.672Z"><meta property="article:author" content="Tsai Hao"><meta property="twitter:card" content="summary"><meta property="twitter:image:src" content="https://tsaihao.github.io/img/og_image.png"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","mainEntityOfPage":{"@type":"WebPage","@id":"https://tsaihao.github.io/blog/implementation_of_libcxx_any/"},"headline":"any","image":["https://tsaihao.github.io/img/og_image.png"],"datePublished":"2022-12-04T18:08:01.000Z","dateModified":"2022-12-04T14:17:43.672Z","author":{"@type":"Person","name":"Tsai Hao"},"publisher":{"@type":"Organization","name":"TsaiHao's Blog","logo":{"@type":"ImageObject"}},"description":"What Is std::anystd::any is a new feature that comes with C++ 17 standard. It’s kind of void* with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found"}</script><link rel="canonical" href="https://tsaihao.github.io/blog/implementation_of_libcxx_any/"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.0.0/css/all.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;600&amp;family=Source+Code+Pro"><link rel="stylesheet" href="/css/default.css"><!--!--><!-- hexo injector head_end start --><script>
+  (function () {
+      function switchTab() {
+          if (!location.hash) {
+            return;
+          }
 
-  
-  
-<link rel="stylesheet" href="/css/style.css">
+          const $tabMenu = document.querySelector(`a[href="${location.hash}"]`);
+          if (!$tabMenu) {
+            return;
+          }
 
-  
-    
-<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+          const $tabMenuContainer = $tabMenu.parentElement.parentElement;
+          Array.from($tabMenuContainer.children).forEach($menu => $menu.classList.remove('is-active'));
+          Array.from($tabMenuContainer.querySelectorAll('a'))
+              .map($menu => document.getElementById($menu.getAttribute("href").substring(1)))
+              .forEach($content => $content.classList.add('is-hidden'));
 
-  
-<meta name="generator" content="Hexo 6.3.0"></head>
-
-<body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">TsaiHao&#39;s Blog</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://tsaihao.github.io"></form>
-      </div>
-    </div>
-  </div>
-</header>
-
-      <div class="outer">
-        <section id="main"><article id="post-implementation_of_libcxx_any" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/blog/implementation_of_libcxx_any/" class="article-date">
-  <time class="dt-published" datetime="2022-12-04T18:08:01.000Z" itemprop="datePublished">2022-12-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 class="p-name article-title" itemprop="headline name">
-      any
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <h1 id="What-Is-std-any"><a href="#What-Is-std-any" class="headerlink" title="What Is std::any"></a>What Is <code>std::any</code></h1><p><code>std::any</code> is a new feature that comes with C++ 17 standard. It’s kind of <code>void*</code> with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found here: <a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/utility/any">std::any - cppreference</a></p>
+          if ($tabMenu) {
+              $tabMenu.parentElement.classList.add('is-active');
+          }
+          const $activeTab = document.querySelector(location.hash);
+          if ($activeTab) {
+              $activeTab.classList.remove('is-hidden');
+          }
+      }
+      switchTab();
+      window.addEventListener('hashchange', switchTab, false);
+  })();
+  </script><!-- hexo injector head_end end --><meta name="generator" content="Hexo 6.3.0"></head><body class="is-1-column"><nav class="navbar navbar-main"><div class="container navbar-container"><div class="navbar-brand justify-content-center"><a class="navbar-item navbar-logo" href="/">TsaiHao&#039;s Blog</a></div><div class="navbar-menu"><div class="navbar-end"></div></div></div></nav><section class="section"><div class="container"><div class="columns"><div class="column order-2 column-main is-12"><div class="card"><article class="card-content article" role="article"><div class="article-meta is-size-7 is-uppercase level is-mobile"><div class="level-left"><span class="level-item">Posted&nbsp;<time dateTime="2022-12-04T18:08:01.000Z" title="12/4/2022, 6:08:01 PM">2022-12-04</time></span><span class="level-item">Updated&nbsp;<time dateTime="2022-12-04T14:17:43.672Z" title="12/4/2022, 2:17:43 PM">2022-12-04</time></span></div></div><h1 class="title is-3 is-size-4-mobile">any</h1><div class="content"><h1 id="What-Is-std-any"><a href="#What-Is-std-any" class="headerlink" title="What Is std::any"></a>What Is <code>std::any</code></h1><p><code>std::any</code> is a new feature that comes with C++ 17 standard. It’s kind of <code>void*</code> with type-safety, supporting copy&#x2F;move&#x2F;store&#x2F;get, etc. Some basic usages of it can be found here: <a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/utility/any">std::any - cppreference</a></p>
 <p>Understanding how <code>std::any</code> is implemented can be gainful, for it taking advantage of many c++ skills, especially templates.</p>
 <h1 id="Implementation-of-std-any"><a href="#Implementation-of-std-any" class="headerlink" title="Implementation of std::any"></a>Implementation of <code>std::any</code></h1><p>The source code referred to below is <any> of llvm’s libcxx library, revision: <a target="_blank" rel="noopener" href="https://github.com/llvm/llvm-project/blob/eb7d16ea25649909373e324e6ebf36774cabdbfa/libcxx/include/any">any - libcxx</a>.</p>
 <h2 id="Class-Layout"><a href="#Class-Layout" class="headerlink" title="Class Layout"></a>Class Layout</h2><p><code>std::any</code> has two data members:</p>
@@ -145,100 +78,11 @@
 <p>The same type-catching trick can also be employed in c++ source code. <code>__PRETTY_FUNCTION__</code> macro carries type name of a template function, so you can do some static reflections with it. A famous example is <a target="_blank" rel="noopener" href="https://github.com/Neargye/magic_enum">Magic Enum</a>.</p>
 </blockquote>
 <p>Another noticeable thing is that public classes of libcxx need special treatment because they have an inline namespace <code>__1</code>.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://tsaihao.github.io/blog/implementation_of_libcxx_any/" data-id="clb9fxpva0000f2lub9ydh9pk" data-title="any" class="article-share-link">Share</a>
-      
-      
-      
-    </footer>
-  </div>
-  
-    
-  
-</article>
-
-
-</section>
-        
-          <aside id="sidebar">
-  
-    
-
-  
-    
-
-  
-    
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archives</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/12/">December 2022</a></li></ul>
-    </div>
-  </div>
-
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Recent Posts</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/blog/implementation_of_libcxx_any/">any</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
-
-  
-</aside>
-        
-      </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      
-      &copy; 2022 Tsai Hao<br>
-      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
-    </div>
-  </div>
-</footer>
-
-    </div>
-    <nav id="mobile-nav">
-  
-    <a href="/" class="mobile-nav-link">Home</a>
-  
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
-
-
-<script src="/js/jquery-3.4.1.min.js"></script>
-
-
-
-  
-<script src="/fancybox/jquery.fancybox.min.js"></script>
-
-
-
-
-<script src="/js/script.js"></script>
-
-
-
-
-
-  </div>
-</body>
-</html>
+</div><!--!--></article></div><!--!--><!--!--></div><!--!--><!--!--></div></div></section><footer class="footer"><div class="container"><div class="level"><div class="level-start"><a class="footer-logo is-block mb-2" href="/">TsaiHao&#039;s Blog</a><p class="is-size-7"><span>&copy; 2022 Tsai Hao</span>  Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> &amp; <a href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a></p></div><div class="level-end"></div></div></div></footer><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script><script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script><script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script><script>moment.locale("en");</script><script>var IcarusThemeSettings = {
+            article: {
+                highlight: {
+                    clipboard: true,
+                    fold: 'unfolded'
+                }
+            }
+        };</script><script src="/js/column.js"></script><!--!--><script src="/js/main.js" defer></script><!--!--></body></html>
