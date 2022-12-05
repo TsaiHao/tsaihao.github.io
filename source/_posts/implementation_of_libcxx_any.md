@@ -1,7 +1,10 @@
 ---
-title: any
+title: implementation of std::any in libc++
 date: 2022-12-04 18:08:01
-tags:
+categories: blog
+tags: 
+- c++ 
+- libc++
 ---
 
 # What Is `std::any`
